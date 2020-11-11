@@ -1,6 +1,8 @@
 # oldbailey
  MLprojectFall2020
 
+ # env - tf-gpu
+
 # Avg Perceptron Oct 21 0:21
 Average perceptron on bag-of-words training data augmented by one-hot encoded metadata features (age, gender, offence cat).
 5-fold cv; Learning rate = 1; 5 epochs.

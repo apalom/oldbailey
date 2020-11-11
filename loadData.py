@@ -10,7 +10,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from word2number import w2n
 import os
+from sklearn.datasets import dump_svmlight_file
 
 def roundup(x, by):
     return int(math.ceil(x / float(by))) * by
@@ -22,227 +24,112 @@ os.chdir(r'C:\Users\Alex\Documents\GitHub\oldbailey')
 from sklearn.datasets import load_svmlight_file as loadSVM
 import scipy.sparse
 
-X_bowTrn, y_bowTrn = loadSVM('project_data/data/bag-of-words/bow.train.libsvm')
-X_bowTrn = pd.DataFrame.sparse.from_spmatrix(X_bowTrn)
-y_bowTrn = pd.DataFrame(y_bowTrn, columns=['Label'])
+def loadBOW():
 
-X_bowTst, y_bowTst = loadSVM('project_data/data/bag-of-words/bow.test.libsvm')
-X_bowTst = pd.DataFrame.sparse.from_spmatrix(X_bowTst)
-y_bowTst = pd.DataFrame(y_bowTst, columns=['Label'])
+    X_bowTrn, y_bowTrn = loadSVM('project_data/data/bag-of-words/bow.train.libsvm')
+    X_bowTrn = pd.DataFrame.sparse.from_spmatrix(X_bowTrn)
+    y_bowTrn = pd.DataFrame(y_bowTrn, columns=['Label'])
+    
+    X_bowTst, y_bowTst = loadSVM('project_data/data/bag-of-words/bow.test.libsvm')
+    X_bowTst = pd.DataFrame.sparse.from_spmatrix(X_bowTst)
+    y_bowTst = pd.DataFrame(y_bowTst, columns=['Label'])
+    
+    majLbl = {}
+    majLbl['TstLblP']  = np.mean(y_bowTst.values)
+    majLbl['TstLbl'] = int(np.round(majLbl['TstLblP']))
+    majLbl['TrnLblP'] = np.mean(y_bowTrn.values)
+    majLbl['TrnLbl'] = int(np.round(majLbl['TrnLblP']))
+    
+    return X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, majLbl
 
-majLbl = {}
-majLbl['TstLblP'] = np.mean(y_bowTst.values)
-majLbl['TstLbl'] = int(np.round(majLbl['TstLblP']))
-majLbl['TrnLblP'] = np.mean(y_bowTrn.values)
-majLbl['TrnLbl'] = int(np.round(majLbl['TrnLblP']))
+X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, majLbl = loadBOW()
 
 #%% load meta data and select features
 
-metaTrn = pd.read_csv('project_data/data/misc-attributes/misc-attributes-train.csv')
-metaTst = pd.read_csv('project_data/data/misc-attributes/misc-attributes-test.csv')
+def loadMeta(features, oneHot):
+    metaTrn = pd.read_csv('project_data/data/misc-attributes/misc-attributes-train.csv')
+    metaTst = pd.read_csv('project_data/data/misc-attributes/misc-attributes-test.csv')
 
-#%% descriptive statistics - defendant age
+    #% select meta data features 
+    metaTrn = metaTrn[features]
+    metaTst = metaTst[features]
 
-maxAge = roundup(np.max(metaTrn['defendant_age']),10)
-
-sns.set_style('darkgrid')
-fig, ax = plt.subplots(figsize=(8,5), dpi=240)
-sns.distplot(metaTrn['defendant_age'].where(metaTrn['defendant_age'] > 0).dropna(),
-    bins = np.arange(0,maxAge,5), label='Known Ages')
-sns.distplot(metaTrn['defendant_age'].where(metaTrn['defendant_age'] == 0).dropna(),
-    bins = np.arange(0,maxAge,5), label='Unknown Ages')
-#metaTrn['defendant_age'].where(metaTrn['defendant_age'] > 0).dropna().plot.hist(
-#    bins = np.arange(0,maxAge,10), alpha=0.8, rwidth=0.95, label='Known Ages')
-#metaTrn['defendant_age'].where(metaTrn['defendant_age'] == 0).dropna().plot.hist(
-#    bins=np.arange(0,20,10), alpha=0.8, rwidth=0.95, label='Unknown Ages')
-
-plt.title('Defendant Age Distribution')
-plt.xlim([-0.5,maxAge])
-plt.legend()
-
-#%% descriptive statistics - defendant age
-
-maxVictim = roundup(np.max(metaTrn['num_victims']),5)
-
-sns.set_style('darkgrid')
-fig, ax = plt.subplots(figsize=(8,5), dpi=240)
-metaTrn['num_victims'].plot.hist(density=True, bins=np.arange(0,maxVictim,1))
-
-plt.title('Number of Victims Distribution')
-plt.legend()
-
-#%% select meta data features 
-select_features = ['defendant_age','defendant_gender','offence_category']
-metaTrn = metaTrn[select_features]
-metaTst = metaTst[select_features]
-
-#%% bin defendant ages
-
-from word2number import w2n
-
-errCnt = 0;
-for idx, row in metaTrn.iterrows():
-
-    # convert defendant age strings to integer    
-    try:
-        metaTrn.at[idx,'defendant_age'] = w2n.word_to_num(str(row.defendant_age))                
-    except ValueError:        
-        errCnt+=1 
-        metaTrn.at[idx,'defendant_age'] = 0
+    # convert defendant age strings to integer & bin defendant ages
+    errCnt = 0;
+    for idx, row in metaTrn.iterrows():
     
+        # convert defendant age strings to integer    
+        try:
+            metaTrn.at[idx,'defendant_age'] = w2n.word_to_num(str(row.defendant_age))                
+        except ValueError:        
+            errCnt+=1 
+            metaTrn.at[idx,'defendant_age'] = 0
+        
     # roundup to nearest 10
     metaTrn.at[idx,'defendant_age'] = roundup(metaTrn.at[idx,'defendant_age'],10)
-print('Number of errors:', errCnt)
-        
+    print('Number of errors:', errCnt)     
 
-#%% categorize 
+    if oneHot == 'custom':
+        for f in features:
+            if f == 'defendant_gender': #if def_gender = male -> assign 1  
+              # train data  
+                metaTrn[f] = metaTrn[f].replace({'male': 1, 'female': 0, 'indeterminate': 0})
+              # test data  
+                metaTst[f] = metaTst[f].replace({'male': 1, 'female': 0, 'indeterminate': 0})
+            elif f == 'num_victims': #if crime = theft -> assign 1          
+              # train data     
+                metaTrn[f].loc[metaTrn[f] != 1] = 0 # crimes with != 1 get label value 0 (> 13,000 single victime crimes.)
+              # test data  
+                metaTst[f].loc[metaTst[f] != 1] = 0 
+            elif f == 'offence_category': #if crime = theft -> assign 1
+              # train data
+                metaTrn[f] = metaTrn[f].replace({'theft': 1})
+                metaTrn[f].loc[metaTrn[f] != 1] = 0 
+                metaTrn[f] = metaTrn[f].astype(object).astype(int)
+              # test data
+                metaTst[f] = metaTst[f].replace({'theft': 1})
+                metaTst[f].loc[metaTst[f] != 1] = 0 
+                metaTst[f] = metaTst[f].astype(object).astype(int)
+            elif f == 'victim_genders': #if victim = male -> assign 1
+              # train data
+                metaTrn[f] = metaTrn[f].replace({'male': 1})
+                metaTrn[f].loc[metaTrn[f] != 1] = 0 
+                metaTrn[f] = metaTrn[f].astype(object).astype(int)
+              # test data
+                metaTst[f] = metaTst[f].replace({'male': 1})
+                metaTst[f].loc[metaTst[f] != 1] = 0 
+                metaTst[f] = metaTst[f].astype(object).astype(int)
 
-featureize = {}
-for f in list(metaTrn):
-    featureize[f] = metaTrn[f].value_counts()
-    
-    #featureize[f+'_count'] = len(set(metaTrn[f]))
-    #featureize[f+'_set'] = list(set(metaTrn[f]))
+    elif oneHot == 'full':# full onehot encoding            
+        metaTrn = pd.get_dummies(metaTrn,drop_first=True)
+        metaTst = pd.get_dummies(metaTst,drop_first=True)
 
-#featureize = pd.DataFrame()
+        return metaTrn, metaTst
 
-#%%
-
-metaTrn = pd.read_csv('project_data/data/misc-attributes/misc-attributes-train.csv')
-metaTst = pd.read_csv('project_data/data/misc-attributes/misc-attributes-test.csv')
-
-# feature types
-featureize = {}
-for f in list(metaTrn):
-    featureize[f] = metaTrn[f].value_counts()
-
-# custom one-hot
-select_features = ['defendant_gender','num_victims','offence_category','victim_genders']
-metaTrn = metaTrn[select_features]
-metaTst = metaTst[select_features]
-
-for f in select_features:
-    if f == 'defendant_gender':      
-      # train data  
-        metaTrn[f] = metaTrn[f].replace({'male': 1, 'female': 0, 'indeterminate': 0})
-      # test data  
-        metaTst[f] = metaTst[f].replace({'male': 1, 'female': 0, 'indeterminate': 0})
-    elif f == 'num_victims':           
-      # train data     
-        metaTrn[f].loc[metaTrn[f] != 1] = 0 # crimes with != 1 get label value 0 (> 13,000 single victime crimes.)
-      # test data  
-        metaTst[f].loc[metaTst[f] != 1] = 0 
-    elif f == 'offence_category':
-      # train data
-        metaTrn[f] = metaTrn[f].replace({'theft': 1})
-        metaTrn[f].loc[metaTrn[f] != 1] = 0 
-        metaTrn[f] = metaTrn[f].astype(object).astype(int)
-      # test data
-        metaTst[f] = metaTst[f].replace({'theft': 1})
-        metaTst[f].loc[metaTst[f] != 1] = 0 
-        metaTst[f] = metaTst[f].astype(object).astype(int)
-    elif f == 'victim_genders':
-      # train data
-        metaTrn[f] = metaTrn[f].replace({'male': 1})
-        metaTrn[f].loc[metaTrn[f] != 1] = 0 
-        metaTrn[f] = metaTrn[f].astype(object).astype(int)
-      # test data
-        metaTst[f] = metaTst[f].replace({'male': 1})
-        metaTst[f].loc[metaTst[f] != 1] = 0 
-        metaTst[f] = metaTst[f].astype(object).astype(int)
-        
+# select features for meta data
+sel_features = ['defendant_age','num_victims','defendant_gender','offence_category'];
+metaTrn, metaTst = loadMeta(sel_features, 'full')
+         
 #%% build augmented training and testing input datasets
-X_Trn = pd.concat([X_bowTrn, metaTrn], axis=1, sort=False)
-train_in = pd.concat([y_bowTrn, X_Trn], axis=1, sort=False)
 
-X_Tst = pd.concat([X_bowTst, metaTst], axis=1, sort=False)
-test_in = pd.concat([y_bowTst, X_Tst], axis=1, sort=False)
-
-train_in.Label = train_in['Label'].replace(0,-1) #relabel to align with perceptron
-test_in.Label = test_in['Label'].replace(0,-1)
-
-print('Train Input:',train_in.shape)
-print('Test Input:',test_in.shape)  
-
-#%% onehot encoding    
-metaTrn = pd.get_dummies(metaTrn,drop_first=True)
-
-# describe meta training data
-metaTrn.describe()
-metaTrn_totals = np.sum(metaTrn)
-
-#%% Crime Distribution
-
-crimes = ['Damage', 'Deception', 'Kill', 'Misc', 'Royal Offense', 'Sexual', 'Theft', 'Violent Theft']
-metaTrn_crimes = metaTrn_totals[-8:]
-metaTrn_crimes.index = crimes
-
-sns.set_style('darkgrid')
-fig, ax = plt.subplots(figsize=(8,5), dpi=240)
-metaTrn_crimes.plot.bar()
-plt.title('Crime Comparison')
-plt.ylabel('Count')
-
-#%%
-cols = list(train_in)
-cols[0] = 'Label'
-train_in.columns = cols
-cols = list(test_in)
-cols[0] = 'Label'
-test_in.columns = cols
-
-train_in.Label = train_in['Label'].replace(0,-1)
-test_in.Label = test_in['Label'].replace(0,-1)
-
-#%% filter 
-
-dump_svmlight_file(d,e,'C:/result/smvlight2.dat')
-
-#%% cross-validation
-'''
-For this problem we will implement k-folds cross-validation.
-'''
-
-from sklearn.datasets import dump_svmlight_file
-
-n_folds = 5
-k = int(len(train_in)/n_folds); #samples per validation fold
-
-ids = list(np.arange(len(train_in))) # create list of indeces
-np.random.shuffle(ids) # randomly shuffle for CV
-
-train_arr = np.array(train_in)
-test_arr = np.array(test_in)
-
-#dataCV = {};
-for f in range(0,n_folds):
+def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
+    X_Trn = pd.concat([X_trn, metaTrn], axis=1, sort=False)
+    train_in = pd.concat([y_trn, X_Trn], axis=1, sort=False)
     
-    print('+++ CV Data Fold -', f,' +++')      
-    #dataCV[f] = {};
+    X_Tst = pd.concat([X_tst, metaTst], axis=1, sort=False)
+    test_in = pd.concat([y_tst, X_Tst], axis=1, sort=False)
     
-    # create validation fold
-    idxVal = ids[f*k:f*k+k]
-    idxTrn = list(set(ids)-set(idxVal))
-    np.random.shuffle(idxTrn)
+    train_in.Label = train_in['Label'].replace(0,-1) #relabel to align with perceptron
+    test_in.Label = test_in['Label'].replace(0,-1)
     
-    #dataCV[f]['val'] = train_arr[idxVal]
-    #dataCV[f]['trn'] = train_arr[idxTrn]
-    arrFold_val = train_arr[idxVal]
-    arrFold_trn = train_arr[idxTrn]
+    print('Train Input:',train_in.shape)
+    print('Test Input:',test_in.shape)  
     
-    
-    filename = 'working_data/fold'+str(f)+'_val.dat'
-    dump_svmlight_file(arrFold_val[:,1:], arrFold_val[:,0], filename)
-    filename = 'working_data/fold'+str(f)+'_trn.dat'
-    dump_svmlight_file(arrFold_trn[:,1:], arrFold_trn[:,0], filename)
-    #dataCV[f]['val'] = np.array(train_in.iloc[idxVal])
-    #dataCV[f]['trn'] = np.array(train_in.iloc[idxTrn])
-    
-    # save csvs
-    #fileVal = 'working_data/fold'+str(fold)+'_val.csv'
-    #dataCV[fold]['val'].to_csv(fileVal)
-    #fileTrn = 'working_data/fold'+str(fold)+'_trn.csv'
-    #dataCV[fold]['trn'].to_csv(fileTrn)
+    return train_in, test_in
+
+train_in, test_in = augData(metaTrn, X_bowTrn, y_bowTrn, metaTst, X_bowTst, y_bowTst)
+
+
 
 #%% 
 
