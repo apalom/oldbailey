@@ -1,7 +1,8 @@
 # oldbailey
  MLprojectFall2020
+# env - base
 
- # env - tf-gpu
+# dependencies
 
 # Avg Perceptron Oct 21 0:21
 Average perceptron on bag-of-words training data augmented by one-hot encoded metadata features (age, gender, offence cat).

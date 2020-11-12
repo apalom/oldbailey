@@ -73,9 +73,26 @@ plt.title('Crime Comparison')
 plt.ylabel('Count')
 plt.xticks(rotation=45)
 
+#%% X_Trn feature population
+
+fig, ax = plt.subplots(1, 1, figsize=(10,6), dpi=100)
+
+sigFilter = sig[sig.values>0.005]
+sigFilter.plot.hist(ec='w', bins=np.arange(0,0.5,0.005))
+plt.xlim([0,0.1])
+plt.title('Feature Population')
+
+#%% plot learning curves
+fig, ax = plt.subplots(1, 1, figsize=(10,6), dpi=100)
+for l in lc:
+    plt.plot(lc[l], label='Fold '+str(l))
+
+plt.xlabel('Epoch')
+plt.ylabel('Validation Accuracy')
+plt.legend()
+plt.title('Learning Curves')
 
 #%%
-
 cols = list(train_in)
 cols[0] = 'Label'
 train_in.columns = cols

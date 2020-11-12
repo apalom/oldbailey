@@ -5,6 +5,9 @@ Created on Tue Oct 20 13:06:16 2020
 @author: Alex
 """
 
+# import necessary libraries
+from sklearn.datasets import load_svmlight_file as loadSVM
+import scipy.sparse
 import math
 import numpy as np
 import pandas as pd
@@ -12,7 +15,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from word2number import w2n
 import os
+import time
+from datetime import datetime, timedelta 
 from sklearn.datasets import dump_svmlight_file
+
+# import custom learning libraries
+from perceptrons import *
 
 def roundup(x, by):
     return int(math.ceil(x / float(by))) * by
@@ -21,10 +29,23 @@ os.chdir(r'C:\Users\Alex\Documents\GitHub\oldbailey')
 
 #%% import data
 
-from sklearn.datasets import load_svmlight_file as loadSVM
-import scipy.sparse
-
 def loadBOW():
+    '''
+    load bag-of-words dataset.
+
+    Returns
+    -------
+    X_bowTrn : df
+        training bag-of-words features.
+    y_bowTrn : df
+        training bag-of-words labels.
+    X_bowTst : df
+        testing bag-of-words features.
+    y_bowTst : df
+        testing bag-of-words labels.
+    majLbl : dict
+        majority label for test and training datasets. learner should improve upon majority label.
+    '''   
 
     X_bowTrn, y_bowTrn = loadSVM('project_data/data/bag-of-words/bow.train.libsvm')
     X_bowTrn = pd.DataFrame.sparse.from_spmatrix(X_bowTrn)
@@ -34,19 +55,68 @@ def loadBOW():
     X_bowTst = pd.DataFrame.sparse.from_spmatrix(X_bowTst)
     y_bowTst = pd.DataFrame(y_bowTst, columns=['Label'])
     
+    X_bowEval, y_bowEval = loadSVM('project_data/data/bag-of-words/bow.eval.anon.libsvm')
+    X_bowEval = pd.DataFrame.sparse.from_spmatrix(X_bowEval)
+    
     majLbl = {}
     majLbl['TstLblP']  = np.mean(y_bowTst.values)
     majLbl['TstLbl'] = int(np.round(majLbl['TstLblP']))
     majLbl['TrnLblP'] = np.mean(y_bowTrn.values)
     majLbl['TrnLbl'] = int(np.round(majLbl['TrnLblP']))
     
-    return X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, majLbl
+    return X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, X_bowEval, y_bowEval, majLbl
 
-X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, majLbl = loadBOW()
+X_bowTrn, y_bowTrn, X_bowTst, y_bowTst, X_bowEval, y_bowEval, majLbl = loadBOW()
+
+#%%
+
+def loadGlo():
+    '''
+    load glove dataset.
+    '''   
+
+    X_gloTrn, y_gloTrn = loadSVM('project_data/data/glove/glove.train.libsvm')
+    X_gloTrn = pd.DataFrame.sparse.from_spmatrix(X_gloTrn)
+    y_gloTrn = pd.DataFrame(y_gloTrn, columns=['Label'])
+    
+    X_gloTst, y_gloTst = loadSVM('project_data/data/glove/glove.test.libsvm')
+    X_gloTst = pd.DataFrame.sparse.from_spmatrix(X_gloTst)
+    y_gloTst = pd.DataFrame(y_gloTst, columns=['Label'])
+    
+    X_gloEval, y_gloEval = loadSVM('project_data/data/glove/glove.eval.anon.libsvm')
+    X_gloEval = pd.DataFrame.sparse.from_spmatrix(X_gloEval)
+    
+    majLbl = {}
+    majLbl['TstLblP']  = np.mean(y_gloTst.values)
+    majLbl['TstLbl'] = int(np.round(majLbl['TstLblP']))
+    majLbl['TrnLblP'] = np.mean(y_gloTrn.values)
+    majLbl['TrnLbl'] = int(np.round(majLbl['TrnLblP']))
+    
+    return X_gloTrn, y_gloTrn, X_gloTst, y_gloTst, X_gloEval, y_gloEval, majLbl
+
+X_gloTrn, y_gloTrn, X_gloTst, y_gloTst, X_gloEval, y_gloEval, _ = loadBOW()
 
 #%% load meta data and select features
 
 def loadMeta(features, oneHot):
+    '''
+    load meta data with select features and one-hot encoding
+
+    Parameters
+    ----------
+    features : list
+        DESCRIPTION.
+    oneHot : str
+        select 'custom' or 'full' one-hot encoding of metadata.
+
+    Returns
+    -------
+    metaTrn : df
+        training metadata.
+    metaTst : df
+        testing metadata.
+    '''        
+    
     metaTrn = pd.read_csv('project_data/data/misc-attributes/misc-attributes-train.csv')
     metaTst = pd.read_csv('project_data/data/misc-attributes/misc-attributes-test.csv')
 
@@ -113,11 +183,45 @@ metaTrn, metaTst = loadMeta(sel_features, 'full')
 #%% build augmented training and testing input datasets
 
 def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
-    X_Trn = pd.concat([X_trn, metaTrn], axis=1, sort=False)
-    train_in = pd.concat([y_trn, X_Trn], axis=1, sort=False)
+    '''   
+    combine core dataset features with meta data.
+
+    Parameters
+    ----------
+    metaTrn : df
+       training metadata.
+    X_trn : df
+        training dataset features.
+    y_trn : df
+        training dataset labels.
+    metaTst : df
+        testing metadata.
+    X_tst : df
+        testing dataset features.
+    y_tst : df
+        testing dataset labels.
+
+    Returns
+    -------
+    train_in : df
+        final training dataset augumented with meta data.
+    test_in : df
+        final training dataset augumented with meta data.
+    '''
+
+    # count the number of non-zero values as an indicator of a feature's importance
+    sig = pd.DataFrame(np.count_nonzero(X_trn, axis=0)/X_trn.shape[1])
+    sig = sig[sig.values>0.04] # index of significant features
+    X_trn = X_trn[sig.index];
     
-    X_Tst = pd.concat([X_tst, metaTst], axis=1, sort=False)
-    test_in = pd.concat([y_tst, X_Tst], axis=1, sort=False)
+    X_trn = pd.concat([X_trn, metaTrn], axis=1, sort=False)    
+    
+    train_in = pd.concat([y_trn, X_trn], axis=1, sort=False) # add label to features
+    
+    #train_in = train_in[list(feat_sig.index)]
+    
+    X_tst = pd.concat([X_tst, metaTst], axis=1, sort=False)
+    test_in = pd.concat([y_tst, X_tst], axis=1, sort=False)
     
     train_in.Label = train_in['Label'].replace(0,-1) #relabel to align with perceptron
     test_in.Label = test_in['Label'].replace(0,-1)
@@ -127,85 +231,14 @@ def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
     
     return train_in, test_in
 
-train_in, test_in = augData(metaTrn, X_bowTrn, y_bowTrn, metaTst, X_bowTst, y_bowTst)
+#train_in, test_in = augData(metaTrn, X_bowTrn, y_bowTrn, metaTst, X_bowTst, y_bowTst)
 
-
-
-#%% 
-
-from perceptrons import *
-
-# prepare best hyper-parameters
-bestHP = pd.DataFrame(np.zeros((4,6)), index=['std','decay','avg','margin'],
-                                    columns=['fold','rate','margin','updates','trn_accuracy', 'val_accuracy'])
-weights = {}; biases = {}; 
-acc_s0 = acc_d0 = acc_a0 = acc_m0 = 0; # initialize baseline accuracy value
-up_s0 = up_d0 = up_a0 = up_m0 = 0; # initialize update counts 
-lc = {}
-    
-for f in np.arange(1, n_folds+1):
-    up_s0 = up_d0 = up_a0 = up_m0 = 0; # initialize updates counter for each fold
-    print('Fold - ', f)
-    
-    data_fold = dataCV[f]
-    
-    # initialize parameters
-    etas = [1,0.5,0.1] # learning rates 
-    
-    # initialize weights and bias terms
-    predAcc_dict = {}; # store accuracies
-    w0 = np.random.uniform(-0.01, 0.01, size=(data_fold['trn'].shape[1]-1)) 
-    b0 = np.random.uniform(-0.01, 0.01)
-    T = 10; # number of epochs
-
-    # --- average
-    print('<<< Averaging Perceptron >>>')
-    for r in etas:
-        print('  Learning rate:', r)
-        w_avg, b_avg, _, lc[r], _, _ = perc_avg(data_fold['trn'],w0,b0,r,T)
-        #trnAcc_a = pred_acc('Avg - Training', data_fold['trn'], w_avg, b_avg) 
-        valAcc_a = pred_acc('Avg - Validation', data_fold['val'], w_avg, b_avg) 
-    
-        if valAcc_a > acc_a0:
-            print('\n-Batch Perceptron - Averaging:', r)
-            print('-Update', np.round(acc_a0,3), '->', np.round(valAcc_a,3), f, r, 0)
-            acc_a0 = valAcc_a; # if predicted accuracy for these hp is better, update
-            up_a0 += 1;
-            bestHP.loc['avg'] = [f, r, 0, up_a0, 'na', valAcc_a]
-            weights['avg'] = w_avg;
-            biases['avg'] = b_avg;   
+X_trnComb = pd.concat([X_bowTrn, X_gloTrn], axis=1, sort=False)
+X_trnComb.columns= np.arange(0,X_trnComb.shape[1])
+train_in, test_in = augData(metaTrn, X_trnComb, y_bowTrn, metaTst, X_bowTst, y_bowTst)
 
 #%%
 
-weights['avg'].to_csv('weights.csv')
-
-
-#%% make predictions
-
-def makePred(data, w, b):
-
-    wT = w.transpose();
-    yi_p = [];
-    
-    for ix, row in data.iterrows():
-        xi = row;
-        
-        if np.dot(wT,xi) + b >= 0: # create predicted label
-            yi_p.append(1) # true label
-        else: yi_p.append(0) # false label #NOTE check label true/false [1,0] or [1,-1]
-
-    return yi_p
-
-yi_predict = makePred(eval_in, weights['avg'], biases['avg'])
-
-print(np.mean(yi_predict))
-
-#%%
-
-w_eval = weights['avg'][:-19] #remove meta data training weights
-wT = w_eval.transpose(); 
-
-b = biases['avg'];
 yi_p = [];
 
 for ix, row in eval_in.iterrows():

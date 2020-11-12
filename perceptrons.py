@@ -27,7 +27,7 @@ def pred_acc(variant,data,w,b):
             acc_cnt += 1; # count correct labels
            
     acc = acc_cnt/len(data)            
-    print('  - pred accuracy: {:.4f}'.format(acc))  
+    print('     > pred acc: {:.4f}'.format(acc))  
     
     return acc
 
@@ -131,9 +131,9 @@ def perc_avg(data,w,b,r,T):
     up = 0 # initialize update count
     for ep in range(T):   
         #print('.', end=" ")
-        print(' Epoch:',ep)
+        print('    epoch:',ep)
         data = data.sample(frac=1).reset_index(drop=True) # shuffle data
-        
+                
         for ix, row in data.iterrows():
             yi = row.Label # select sample label
             xi = row.drop('Label') # select sample features
@@ -154,15 +154,20 @@ def perc_avg(data,w,b,r,T):
         # store best accuracy from epochs
         epAcc = pred_acc('Average',data,w_avg,b_avg) 
         lc[ep] = epAcc;
+        
+        # update results if accuracy improves
         if epAcc > acc0: 
-            best_epAcc = [ep, epAcc, up];
-            w_best = w_avg; b_best = b_avg;
+            #bestEp = [ep, epAcc, up];
+            w_best = w_avg; 
+            b_best = b_avg;
             acc0 = epAcc;
     
     #print('\n- Learning rate:', r) 
     #print('\nBatch Perceptron - Averaging:', r)  
     #print('- Number of Updates:', s) 
-    return w_avg, b_avg, best_epAcc, lc, w_best, b_best
+    #return bestEp, lc, w_best, b_best
+    
+    return w_best, b_best, lc
 
 #%% batch perceptron algorithm with margin and decaying learning rate  
 def perc_margin(data,w,b,r,T,margin):   
