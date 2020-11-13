@@ -17,36 +17,31 @@ def run_perceptron(dataCV):
         
     n_folds = len(dataCV)
     # --- average
-    print('<<< Averaging Perceptron >>>')
+    #print('<<< Averaging Perceptron >>>')
+    print('<<< Averaging SVM >>>')
     for f in np.arange(0, n_folds):
         up_a0 = 0; # initialize updates counter for each fold
         print('\nFold -', f)
         
         data_fold = dataCV[f]
+
+        T = 15; # number of epochs
+        r = 1; g0 = 0.001; C = 10; # hypers
+        #print('- Learning rate:', r)
+        print('- Gamma0: {} | Tradeoff: {}'.format(g0,C))        
+        #w_avg, b_avg, lc[f] = avgPerc_np(data_fold['trn'].head(100),r,T)          
+        w_avg, b_avg, lc[f] = avgSvm(data_fold['trn'], g0, C, T)
         
-        # initialize parameters
-        etas = [1] # learning rates 
+        # validation accuracy
+        valAcc_a = pred_acc(data_fold['val'], w_avg, b_avg) 
+        print('\n ==> val acc {:.4f}'.format(valAcc_a))
         
-        # initialize weights and bias terms
-        w0 = np.random.uniform(-0.01, 0.01, size=(data_fold['trn'].shape[1]-1)) 
-        b0 = np.random.uniform(-0.01, 0.01)
-        T = 10; # number of epochs
-    
-        for r in etas:
-            print('- Learning rate:', r)
-            #w_avg, b_avg, lc[f] = avgPerc_pd(data_fold['trn'],w0,b0,r,T)
-            w_avg, b_avg, lc[f] = avgPerc_np(data_fold['trn'],w0,b0,r,T)          
-            
-            # validation accuracy
-            valAcc_a = pred_acc(data_fold['val'], w_avg, b_avg) 
-            print('\n ==> val acc {:.3f}'.format(valAcc_a))
-            
-            if valAcc_a > acc_a0: # update best values if validation accuracy improves                                
-                acc_a0 = valAcc_a; # if predicted accuracy for these hp is better, update
-                up_a0 += 1;            
-                # update best values based on validation accuracy
-                best_w = w_avg; best_b = b_avg;  best_r = r;
-                best_acc = valAcc_a;
+        if valAcc_a > acc_a0: # update best values if validation accuracy improves                                
+            acc_a0 = valAcc_a; # if predicted accuracy for these hp is better, update
+            up_a0 += 1;            
+            # update best values based on validation accuracy
+            best_w = w_avg; best_b = b_avg;  best_r = r;
+            best_acc = valAcc_a;
                 
     return best_w, best_b, best_r, best_acc, lc
 
@@ -55,10 +50,6 @@ t_st = time.time()
 best_w, best_b, best_r, best_acc, lc = run_perceptron(dataCV)
 t_en = time.time()
 print('Runtime (m):', np.round((t_en - t_st)/60,2))
-
-#%%
-
-
 
 #%% execute SVM perceptron
 def run_SVM(dataCV):

@@ -90,7 +90,11 @@ for l in lc:
 plt.xlabel('Epoch')
 plt.ylabel('Validation Accuracy')
 plt.legend()
+plt.grid()
 plt.title('Learning Curves')
+
+figPath = 'learning_curves1.pdf'
+plt.savefig(figPath, format='pdf', dpi=300) 
 
 #%%
 cols = list(train_in)

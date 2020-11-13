@@ -30,11 +30,38 @@ def pred_acc(data,w,b):
     
     return acc
 
-#%% numpy based avg perceptron
-def avgPerc_np(data,w,b,r,T):
+#%%
+def accuracy(data,w,b):
+    wT = w.transpose();
     data_np = data.to_numpy()
     y = data_np[:,0]
     X = data_np[:,1:]
+    
+    yi_p = []; acc_cnt = 0;
+    
+    for i in range(X.shape[0]):
+        yi = y[i]; xi = X[i];    
+        
+        if np.dot(wT,xi) + b >= 0: # create predicted label
+            yi_p.append(1) # true label
+        else: yi_p.append(-1) # false label #NOTE check label true/false [1,0] or [1,-1]
+    
+        if yi_p[-1] == yi:
+            acc_cnt += 1; # count correct labels
+           
+    acc = acc_cnt/len(data)                 
+    
+    return acc
+
+#%% numpy based avg perceptron
+def avgPerc_np(data,r,T):
+    data_np = data.to_numpy()
+    y = data_np[:,0]
+    X = data_np[:,1:]
+    
+    # initialize weights and bias terms
+    w = np.random.uniform(-0.01, 0.01, size=(X.shape[1])) 
+    b = np.random.uniform(-0.01, 0.01)
     
     w_sum = np.copy(w); b_sum = np.copy(b); s = 0;# initialize values
     acc0 = 0 # initialize accuracy baseline
@@ -43,7 +70,7 @@ def avgPerc_np(data,w,b,r,T):
     idx = np.arange(X.shape[0]) # index for stepping through data
     
     for ep in range(T):
-        np.random.shuffle(idx1) # shuffle index
+        np.random.shuffle(idx) # shuffle index
     
         for i in idx:
             yi = y[i]
@@ -62,14 +89,13 @@ def avgPerc_np(data,w,b,r,T):
         w_avg = w_sum/s; # average weight
         b_avg = b_sum/s; # average bias 
         
-        #make label predictions
-        #epAcc = pred_acc(data,w_avg,b_avg) 
+        #make label predictions & return training accuracy
+        epAcc = accuracy(data,w_avg,b_avg) 
         
         lc[ep] = epAcc
             
         # update results if accuracy improves
         if epAcc > acc0: 
-            #bestEp = [ep, epAcc, up];
             w_best = w_avg; 
             b_best = b_avg;
             acc0 = epAcc;

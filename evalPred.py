@@ -58,8 +58,8 @@ pred_Eval, _ = makePred(eval_in, 'none', w_eval, b_eval)
 
 pred_Eval = pd.DataFrame(pred_Eval, columns=['label'])
 pred_Eval['example_id'] = np.arange(0,len(pred_Eval))
-
-pred_Eval.to_csv('yi_p11.csv')
+#%%
+pred_Eval.to_csv('yi_p14.csv')
 
 #%%
 
