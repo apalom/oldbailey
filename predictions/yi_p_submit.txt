@@ -2,8 +2,8 @@ Rep: bag-of-words + glove
 Filter Features: All
 Meta Features: 'defendant_age', 'num_victims', 'defendant_gender', 'offence_category'	
 One-Hot: Full	
-Algorithm: Average SVM
-Hypers: T = 10, gamma = 0.001, C = 10,000	
-Val Acc: 0.701
-Test Acc: 0.701
-Runtime: 3.25 (m)
+Algorithm: Average Perceptron
+Hypers: T = 10, r = 1
+Val Acc: 0.748
+Test Acc: 0.706
+Runtime: 7.38 (m)

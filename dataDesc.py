@@ -93,7 +93,7 @@ plt.legend()
 plt.grid()
 plt.title('Learning Curves')
 
-figPath = 'learning_curves1.pdf'
+figPath = 'figures/learning_curves17.pdf'
 plt.savefig(figPath, format='pdf', dpi=300) 
 
 #%%

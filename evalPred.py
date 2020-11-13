@@ -39,13 +39,13 @@ b_eval = best_b;
 
 # combine bow and glove eval datasets
 #eval_in = X_bowEval[sig.index]
-eval_in = pd.concat([X_bowEval, X_gloEval], axis=1, sort=False)
+eval_in = pd.concat([X_bowEval, X_gloEval, X_tfEval], axis=1, sort=False)
 eval_in.columns= np.arange(0,eval_in.shape[1])
 #eval_in = eval_in[sig.index]
 
 # combine bow and glove eval datasets
 #test_in = X_bowTst[sig.index]
-test_in = pd.concat([X_bowTst, X_gloTst], axis=1, sort=False)
+test_in = pd.concat([X_bowTst, X_gloTst, X_tfTst], axis=1, sort=False)
 test_in.columns= np.arange(0,test_in.shape[1])
 #test_in = test_in[sig.index]
 
@@ -59,7 +59,8 @@ pred_Eval, _ = makePred(eval_in, 'none', w_eval, b_eval)
 pred_Eval = pd.DataFrame(pred_Eval, columns=['label'])
 pred_Eval['example_id'] = np.arange(0,len(pred_Eval))
 #%%
-pred_Eval.to_csv('yi_p14.csv')
+print('---- save prediction ----')
+pred_Eval.to_csv('predictions/yi_p17.csv')
 
 #%%
 

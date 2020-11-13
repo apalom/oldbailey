@@ -97,6 +97,34 @@ def loadGlo():
 
 X_gloTrn, y_gloTrn, X_gloTst, y_gloTst, X_gloEval, y_gloEval, _ = loadGlo()
 
+#%% load tfidf
+
+def loadTF():
+    '''
+    load tfidf dataset.
+    '''   
+
+    X_tfTrn, y_tfTrn = loadSVM('project_data/data/tfidf/tfidf.train.libsvm')
+    X_tfTrn = pd.DataFrame.sparse.from_spmatrix(X_tfTrn)
+    y_tfTrn = pd.DataFrame(y_tfTrn, columns=['Label'])
+    
+    X_tfTst, y_tfTst = loadSVM('project_data/data/tfidf/tfidf.test.libsvm')
+    X_tfTst = pd.DataFrame.sparse.from_spmatrix(X_tfTst)
+    y_tfTst = pd.DataFrame(y_tfTst, columns=['Label'])
+    
+    X_tfEval, y_tfEval = loadSVM('project_data/data/tfidf/tfidf.eval.anon.libsvm')
+    X_tfEval = pd.DataFrame.sparse.from_spmatrix(X_tfEval)
+    
+    majLbl = {}
+    majLbl['TstLblP']  = np.mean(y_tfTst.values)
+    majLbl['TstLbl'] = int(np.round(majLbl['TstLblP']))
+    majLbl['TrnLblP'] = np.mean(y_tfTrn.values)
+    majLbl['TrnLbl'] = int(np.round(majLbl['TrnLblP']))
+    
+    return X_tfTrn, y_tfTrn, X_tfTst, y_tfTst, X_tfEval, y_tfEval, majLbl
+
+X_tfTrn, y_tfTrn, X_tfTst, y_tfTst, X_tfEval, y_tfEval, _ = loadTF()
+
 #%% load meta data and select features
 
 def loadMeta(features, oneHot):
@@ -231,7 +259,7 @@ def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
 
 #train_in, test_in = augData(metaTrn, X_bowTrn, y_bowTrn, metaTst, X_bowTst, y_bowTst)
 
-X_trnComb = pd.concat([X_bowTrn, X_gloTrn], axis=1, sort=False)
+X_trnComb = pd.concat([X_bowTrn, X_gloTrn, X_tfTrn], axis=1, sort=False)
 X_trnComb.columns= np.arange(0,X_trnComb.shape[1])
 
 train_in, test_in, sig = augData(metaTrn, X_trnComb, y_bowTrn, metaTst, X_bowTst, y_bowTst)
