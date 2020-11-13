@@ -1,8 +1,9 @@
-Rep: bag-of-words	
-Filter BoW Features: sig < 0.03 [1024 features]
+Rep: bag-of-words + glove	
+Filter Features: sig > 0.02 [1572 features]
 Meta Features: 'defendant_age', 'num_victims', 'defendant_gender', 'offence_category'	
 One-Hot: Full	
 Algorithm: Average Perceptron	
-Hypers: T = 5, etas = [10]	
-Test Acc: 0.742
-Runtime: 6.5 (m)
+Hypers: T = 10, etas = [10]	
+Val Acc: 0.731
+Test Acc: 0.672
+Runtime: 10.5 (m)

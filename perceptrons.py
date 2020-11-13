@@ -11,7 +11,7 @@ import numpy as np
 
 #%% calculate error
 
-def pred_acc(variant,data,w,b):
+def pred_acc(data,w,b):
     wT = w.transpose();
     yi_p = []; acc_cnt = 0;
     
@@ -26,24 +26,101 @@ def pred_acc(variant,data,w,b):
         if yi_p[-1] == yi:
             acc_cnt += 1; # count correct labels
            
-    acc = acc_cnt/len(data)            
-    print('     > pred acc: {:.4f}'.format(acc))  
+    acc = acc_cnt/len(data)                 
     
     return acc
 
-#%% load data
+#%% numpy based avg perceptron
+def avgPerc_np(data,w,b,r,T):
+    data_np = data.to_numpy()
+    y = data_np[:,0]
+    X = data_np[:,1:]
+    
+    w_sum = np.copy(w); b_sum = np.copy(b); s = 0;# initialize values
+    acc0 = 0 # initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    idx = np.arange(X.shape[0]) # index for stepping through data
+    
+    for ep in range(T):
+        np.random.shuffle(idx1) # shuffle index
+    
+        for i in idx:
+            yi = y[i]
+            xi = X[i]      
+            
+            if yi * (np.dot(w.T,xi) + b) <= 0: # mistake LTU
+                w += r * yi * xi; # update weight matrix                 
+                b += r * yi; # update bias term
+                up += 1;                
+            
+            # accumulate weights        
+            w_sum += w; 
+            b_sum += b;
+            s += 1;
+        
+        w_avg = w_sum/s; # average weight
+        b_avg = b_sum/s; # average bias 
+        
+        #make label predictions
+        #epAcc = pred_acc(data,w_avg,b_avg) 
+        
+        lc[ep] = epAcc
+            
+        # update results if accuracy improves
+        if epAcc > acc0: 
+            #bestEp = [ep, epAcc, up];
+            w_best = w_avg; 
+            b_best = b_avg;
+            acc0 = epAcc;
+        
+        print('-> {:.3f}'.format(epAcc), end=" ")
+    
+    return w_best, b_best, lc
 
-def load_trainData(path_to_data):
-    print('====> Load Data @', path_to_data)
+#%% pandas based avg perceptron
+def avgPerc_pd(data,w,b,r,T):   
+       
+    wT = w.transpose(); w_sum = w; b_sum = b; s = 0;# initialize values
+    acc0 = 0 # initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    for ep in range(T):   
+
+        data = data.sample(frac=1).reset_index(drop=True) # shuffle data
+        for ix, row in data.iterrows():
+            yi = row.Label # select sample label
+            xi = row.drop('Label') # select sample features
+                    
+            if yi * (np.dot(wT,xi) + b) <= 0: # mistake LTU
+                w += r * yi * xi # update weight matrix
+                b += r * yi # update bias term
+                wT = w.transpose()
+                up += 1;                
+            
+            # accumulate weights
+            w_sum += w; 
+            b_sum += b;
+            s += 1;
+        
+        w_avg = w_sum/s; # average weight
+        b_avg = b_sum/s; # average bias    
+        
+        # store best accuracy from epochs
+        epAcc = pred_acc(data,w_avg,b_avg) 
+        
+        lc[ep] = epAcc
+        
+        # update results if accuracy improves
+        if epAcc > acc0: 
+            #bestEp = [ep, epAcc, up];
+            w_best = w_avg; 
+            b_best = b_avg;
+            acc0 = epAcc;
+        
+        print('-> {:.3f}'.format(epAcc), end=" ")
     
-    data = pd.read_csv(path_to_data)
-    data.columns = np.arange(0,data.shape[1])
-    data = data.rename(columns={0: 'Label'}) 
-    
-    y = data.Label
-    X = data.drop(['Label'], axis=1)
-    
-    return data, X, y
+    return w_best, b_best, lc
 
 #%% standard batch perceptron algorithm
 def perc_std(data,w,b,r,T):      
@@ -119,55 +196,6 @@ def perc_decay(data,w,b,r,T):
     #print('\n- Learning rate:', r0, '->', np.round(r,6))
     #print('\nBatch Perceptron - Learning Decay:', r0, '->', np.round(r,6))   
     return w, b, best_epAcc, lc, w_best, b_best
-
-#%% batch perceptron algorithm with averaging with fixed learning rate  
-def perc_avg(data,w,b,r,T):   
-   
-    #print('\nBatch Perceptron - Averaging')   
-    
-    wT = w.transpose(); w_sum = w; b_sum = b; s = 0;# initialize values
-    acc0 = 0 # initialize accuracy baseline
-    lc = np.zeros((T)) # learning curve
-    up = 0 # initialize update count
-    for ep in range(T):   
-        #print('.', end=" ")
-        print('    epoch:',ep)
-        data = data.sample(frac=1).reset_index(drop=True) # shuffle data
-                
-        for ix, row in data.iterrows():
-            yi = row.Label # select sample label
-            xi = row.drop('Label') # select sample features
-            
-            if yi * (np.dot(wT,xi) + b) <= 0: # mistake LTU
-                w += r * yi * xi # update weight matrix
-                b += r * yi # update bias term
-                up += 1;
-                wT = w.transpose()
-            
-            # accumulate weights
-            w_sum += w; b_sum += b;
-            s += 1;
-        
-        w_avg = w_sum/s; # average weight
-        b_avg = b_sum/s; # average bias    
-        
-        # store best accuracy from epochs
-        epAcc = pred_acc('Average',data,w_avg,b_avg) 
-        lc[ep] = epAcc;
-        
-        # update results if accuracy improves
-        if epAcc > acc0: 
-            #bestEp = [ep, epAcc, up];
-            w_best = w_avg; 
-            b_best = b_avg;
-            acc0 = epAcc;
-    
-    #print('\n- Learning rate:', r) 
-    #print('\nBatch Perceptron - Averaging:', r)  
-    #print('- Number of Updates:', s) 
-    #return bestEp, lc, w_best, b_best
-    
-    return w_best, b_best, lc
 
 #%% batch perceptron algorithm with margin and decaying learning rate  
 def perc_margin(data,w,b,r,T,margin):   

@@ -30,15 +30,26 @@ def makePred(data, y, w, b):
 
     return yi_p, acc
 
-n_meta = len(best_w) - len(sig) # number of meta features
+n_meta = len(best_w) - (X_trnComb.shape[1]) # number of meta features
 # use best w and b for evaluation
-w_eval = best_w[:-n_meta] #remove meta data training weights
+if n_meta > 0:
+    w_eval = best_w[:-n_meta] #remove meta data training weights
+else: w_eval = best_w
 b_eval = best_b;
 
-eval_in = X_bowEval[sig.index]
-test_pred = X_bowTst[sig.index]
+# combine bow and glove eval datasets
+#eval_in = X_bowEval[sig.index]
+eval_in = pd.concat([X_bowEval, X_gloEval], axis=1, sort=False)
+eval_in.columns= np.arange(0,eval_in.shape[1])
+#eval_in = eval_in[sig.index]
 
-pred_Test, acc = makePred(test_pred, y_bowTst, w_eval, b_eval)
+# combine bow and glove eval datasets
+#test_in = X_bowTst[sig.index]
+test_in = pd.concat([X_bowTst, X_gloTst], axis=1, sort=False)
+test_in.columns= np.arange(0,test_in.shape[1])
+#test_in = test_in[sig.index]
+
+pred_Test, acc = makePred(test_in, y_bowTst, w_eval, b_eval)
 #print("Avg. test prediction:",np.round(np.mean(pred_Test),4))
 print('Test accuracy:', np.round(acc,4))
 
@@ -48,7 +59,7 @@ pred_Eval, _ = makePred(eval_in, 'none', w_eval, b_eval)
 pred_Eval = pd.DataFrame(pred_Eval, columns=['label'])
 pred_Eval['example_id'] = np.arange(0,len(pred_Eval))
 
-pred_Eval.to_csv('yi_p.csv')
+pred_Eval.to_csv('yi_p11.csv')
 
 #%%
 

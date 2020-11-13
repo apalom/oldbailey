@@ -30,7 +30,7 @@ def buildCVdata(n_folds, train_in, test_in):
     
     # create folder
     date_folder = os.path.join(os.getcwd(), 'working_data',
-                               datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+                               datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
     os.makedirs(date_folder)
     
     # cross-validation
