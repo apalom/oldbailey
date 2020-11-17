@@ -211,7 +211,7 @@ metaTrn, metaTst = loadMeta(sel_features, 'full')
          
 #%% build augmented training and testing input datasets
 
-def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
+def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst, significant, stdd):
     '''   
     combine core dataset features with meta data.
 
@@ -229,6 +229,8 @@ def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
         testing dataset features.
     y_tst : df
         testing dataset labels.
+    significant : bool
+        whether or not to filter sparse features. 
 
     Returns
     -------
@@ -238,10 +240,17 @@ def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
         final training dataset augumented with meta data.
     '''
 
+    # standardize data
+    if stdd == True:
+        X_trn = stdData(X_trn)
+        X_tst = stdData(X_tst)
+
     # count the number of non-zero values as an indicator of a feature's importance
-    #sig = pd.DataFrame(np.count_nonzero(X_trn, axis=0)/X_trn.shape[1])
-    #sig = sig[sig.values>0.01] # index of significant features
-    #X_trn = X_trn[sig.index];
+    sig = pd.DataFrame(np.count_nonzero(X_trn, axis=0)/X_trn.shape[1])
+    sig = sig[sig.values>0.01] # index of significant features
+    
+    if significant == True: 
+        X_trn = X_trn[sig.index];
     
     X_trn = pd.concat([X_trn, metaTrn], axis=1, sort=False)        
     train_in = pd.concat([y_trn, X_trn], axis=1, sort=False) # add label to features
@@ -260,8 +269,27 @@ def augData(metaTrn, X_trn, y_trn, metaTst, X_tst, y_tst):
 #train_in, test_in = augData(metaTrn, X_bowTrn, y_bowTrn, metaTst, X_bowTst, y_bowTst)
 
 X_trnComb = pd.concat([X_bowTrn, X_gloTrn, X_tfTrn], axis=1, sort=False)
+
 X_trnComb.columns= np.arange(0,X_trnComb.shape[1])
 
-train_in, test_in, sig = augData(metaTrn, X_trnComb, y_bowTrn, metaTst, X_bowTst, y_bowTst)
+# metaTrn, X_trnComb, y_bowTrn, metaTst, X_bowTst, y_bowTst, Filter Significants (bool), Standardize Data (bool)
+train_in, test_in, sig = augData(metaTrn, X_trnComb, y_bowTrn, metaTst, X_bowTst, y_bowTst, True, True)
+
 
 #%%
+
+def normData(df):
+    '''
+    returned normalized dataset
+    '''
+    df_normed = (df - df.mean()) / (df.max() - df.min())
+    
+    return df_normed
+
+def stdData(df):
+    '''
+    returned normalized dataset
+    '''
+    df_stdd = (df - df.mean()) / df.std()
+    
+    return df_stdd

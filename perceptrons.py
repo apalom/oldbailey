@@ -54,7 +54,8 @@ def accuracy(data,w,b):
     return acc
 
 #%% numpy based avg perceptron
-def avgPerc_np(data,r,T):
+def avgPerc(data,r,T):
+    print('<<< Averages Perceptron >>>')           
     data_np = data.to_numpy()
     y = data_np[:,0]
     X = data_np[:,1:]
@@ -103,6 +104,115 @@ def avgPerc_np(data,r,T):
         print('-> {:.3f}'.format(epAcc), end=" ")
     
     return w_best, b_best, lc
+
+#%% margin + decay perceptron
+def margPerc(data,r0,margin0,T):   
+    print('<<< Margin + Decay Perceptron >>>')           
+    acc0 = 0; t=0; r=r0; margin=margin0;# initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    
+    data_np = data.to_numpy()
+    y = data_np[:,0]
+    X = data_np[:,1:]
+    
+    # initialize weights and bias terms
+    w = np.random.uniform(-0.01, 0.01, size=(X.shape[1])) 
+    b = np.random.uniform(-0.01, 0.01)
+    
+    w_sum = np.copy(w); b_sum = np.copy(b); s = 0;# initialize values
+    acc0 = 0 # initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    idx = np.arange(X.shape[0]) # index for stepping through data
+    
+    for ep in range(T):
+        np.random.shuffle(idx) # shuffle index
+    
+        for i in idx:
+            yi = y[i]; xi = X[i];
+            
+            if yi * (np.dot(w.T,xi) + b) <= margin: # mistake LTU
+                w += r * yi * xi # update weight matrix
+                b += r * yi # update bias term
+                up += 1;
+                        
+            t += 1; # update time step
+            r = r0/(1+t); # decay learning rate                       
+                
+        #make label predictions & return training accuracy
+        epAcc = accuracy(data,w,b)        
+        
+        lc[ep] = epAcc
+            
+        # update results if accuracy improves
+        if epAcc > acc0: 
+            w_best = w; 
+            b_best = b;
+            acc0 = epAcc;
+        
+        print('-> {:.3f}'.format(epAcc), end=" ")
+    
+    return w_best, b_best, lc
+
+#%% margin + decay perceptron
+def margAvgPerc(data,r0,margin0,T):   
+    print('<<< Avg. Margin + Decay Perceptron >>>')           
+    acc0 = 0; t=0; r=r0; margin=margin0;# initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    
+    data_np = data.to_numpy()
+    y = data_np[:,0]
+    X = data_np[:,1:]
+    
+    # initialize weights and bias terms
+    w = np.random.uniform(-0.01, 0.01, size=(X.shape[1])) 
+    b = np.random.uniform(-0.01, 0.01)
+    
+    w_sum = np.copy(w); b_sum = np.copy(b); s = 0;# initialize values
+    acc0 = 0 # initialize accuracy baseline
+    lc = np.zeros((T)) # learning curve
+    up = 0 # initialize update count
+    idx = np.arange(X.shape[0]) # index for stepping through data
+    
+    for ep in range(T):
+        np.random.shuffle(idx) # shuffle index
+    
+        for i in idx:
+            yi = y[i]; xi = X[i];
+            
+            if yi * (np.dot(w.T,xi) + b) <= margin: # mistake LTU
+                w += r * yi * xi # update weight matrix
+                b += r * yi # update bias term
+                up += 1;
+                
+            # accumulate weights        
+            w_sum += w; 
+            b_sum += b;
+            s += 1;
+                
+        r = r0/(1+ep); # decay learning rate                     
+        margin = margin0/(1+ep); # decay margin rate 
+        
+        w_avg = w_sum/s; # average weight
+        b_avg = b_sum/s; # average bias 
+        
+        #make label predictions & return training accuracy
+        epAcc = accuracy(data,w_avg,b_avg)         
+        
+        lc[ep] = epAcc
+            
+        # update results if accuracy improves
+        if epAcc > acc0: 
+            w_best = w_avg; 
+            b_best = b_avg;            
+            acc0 = epAcc;
+        
+        print('-> {:.3f}'.format(epAcc), end=" ")
+    
+    return w_best, b_best, lc
+
 
 #%% pandas based avg perceptron
 def avgPerc_pd(data,w,b,r,T):   

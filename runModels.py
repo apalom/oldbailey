@@ -16,20 +16,20 @@ def run_perceptron(dataCV):
     lc = {}
         
     n_folds = len(dataCV)
-    # --- average
-    print('<<< Averaging Perceptron >>>')
-    #print('<<< Averaging SVM >>>')
+
     for f in np.arange(0, n_folds):
         up_a0 = 0; # initialize updates counter for each fold
         print('\nFold -', f)
         
         data_fold = dataCV[f]
 
-        T = 10; # number of epochs
-        r = 1; g0 = 0.001; C = 10; # hypers
+        T = 25; # number of epochs
+        r = 10; margin = 1; g0 = 0.001; C = 10; # hypers
         print('- Learning rate:', r)
         #print('- Gamma0: {} | Tradeoff: {}'.format(g0,C))        
-        w_avg, b_avg, lc[f] = avgPerc_np(data_fold['trn'],r,T)          
+        #w_avg, b_avg, lc[f] = avgPerc_np(data_fold['trn'],r,T)          
+        #w_avg, b_avg, lc[f] = margPerc(data_fold['trn'], r, margin, T)
+        w_avg, b_avg, lc[f] = margAvgPerc(data_fold['trn'], r, margin, T)
         #w_avg, b_avg, lc[f] = avgSvm(data_fold['trn'], g0, C, T)
         
         # validation accuracy

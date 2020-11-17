@@ -56,46 +56,5 @@ def avgSvm(data, g0, C, T):
         print('-> {:.4f}'.format(epAcc), end=" ")
     
     return w_best, b_best, lc
-  
-#%% Using current time 
-d = dataCV[0]['trn']
-data_np = d.to_numpy()
-y = data_np[:,0]
-X = data_np[:,1:]
-
-g0 = 0.01; C = 10000; T = 10;
-
-t_st = time.time()
-w_best, b_best, lc = svm(d,g0,C,T)
-t_en = time.time()
-print('\nRuntime (m):', np.round((t_en - t_st)/60,3))
-
-#%%
-g0 = 1; C = 0.1;
-d = dataCV[0]['trn']
 
 
-#%%
-
-for i in range(X.shape[0]):
-    
-    val = y[i]*np.dot(w.T,X.iloc[i])
-    print(val)
-    if val > 0: # create predicted label
-        yi_p.append(1) # true label
-    else: yi_p.append(-1) # false label #NOTE check label true/false [1,0] or [1,-1]
-
-    if yi_p[-1] == y[i]:
-        acc_cnt += 1; # count correct labels
-    acc = acc_cnt/len(X)    
-    
-print(acc)
-
-#%%
-
-X = np.array([[0,0,0],
-              [0,1,0],
-              [1,0,0],
-              [1,1,0]])
-
-y = np.array([[-1],[-1],[-1],[1]])

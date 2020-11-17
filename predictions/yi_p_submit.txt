@@ -1,9 +1,9 @@
-Rep: bag-of-words + glove	
+Rep: bag-of-words + glove + tfidf	
 Filter Features: All
 Meta Features: 'defendant_age', 'num_victims', 'defendant_gender', 'offence_category'	
 One-Hot: Full	
-Algorithm: Average Perceptron
-Hypers: T = 10, r = 1
+Algorithm: Avg. Margin + Decay Perceptron
+Hypers: T = 10, r = 1, margin = 1,
 Val Acc: 0.748
-Test Acc: 0.706
-Runtime: 7.38 (m)
+Test Acc: 0.696
+Runtime: 7.48 (m)

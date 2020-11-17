@@ -133,3 +133,23 @@ for ep in range(T):
     #print('.', end=" ")        
     #print('val acc: {:.4f}'.format(ep,acc), end=" ")
     print('-> {:.3f}'.format(epAcc), end=" ")
+    
+#%%
+
+  
+#%% Using current time 
+d = dataCV[0]['trn']
+data_np = d.to_numpy()
+y = data_np[:,0]
+X = data_np[:,1:]
+
+g0 = 0.01; C = 10000; T = 10;
+
+t_st = time.time()
+w_best, b_best, lc = svm(d,g0,C,T)
+t_en = time.time()
+print('\nRuntime (m):', np.round((t_en - t_st)/60,3))
+
+#%%
+g0 = 1; C = 0.1;
+d = dataCV[0]['trn']
